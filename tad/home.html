@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户中心</title>
+    <style>
+        :root { --bg: #f0f4ff; --card:#fff; --text:#1f2937; --muted:#6b7280; --primary:#4f46e5; }
+        * { box-sizing:border-box; }
+        body { margin:0; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%); min-height:100vh; }
+        .page { width: min(95%, 900px); margin: 24px auto; }
+        .panel { background: var(--card); border-radius:16px; box-shadow:0 10px 30px rgba(15,23,42,0.08); overflow:hidden; }
+        .hero { background: linear-gradient(135deg, #4f46e5, #6366f1); color:#fff; padding:22px; }
+        .hero h1 { margin:0; font-size:1.5rem; }
+        .hero p { margin:8px 0 0; color:#dbeafe; }
+        .content { padding:20px; }
+        .row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+        .card { background:#f9fbff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; }
+        .card h3 { margin:0 0 8px; font-size:0.95rem; color:#111827; }
+        .card p { margin:0; color:#4b5563; font-size:0.9rem; }
+        .btn { margin-top:16px; display:inline-block; background:var(--primary); color:#fff; text-decoration:none; border-radius:8px; padding:10px 16px; font-weight:600; }
+        .logout { margin-top:22px; display:inline-block; color:#374151; text-decoration:none; border:1px solid #d1d5db; border-radius:8px; padding:10px 16px; background:#fff; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="panel">
+            <div class="hero">
+                <h1 id="title">用户中心</h1>
+                <p id="subtitle">安全登录成功后访问您的专属空间。</p>
+            </div>
+            <div class="content">
+                <div class="row">
+                    <div class="card">
+                        <h3>当前用户</h3>
+                        <p id="userName">--</p>
+                    </div>
+                    <div class="card">
+                        <h3>账户状态</h3>
+                        <p id="status">--</p>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top:12px;">
+                    <h3>个人信息</h3>
+                    <div style="display:grid; gap:10px; margin-top:8px;">
+                        <div>
+                            <label style="font-weight:600; color:#374151;">昵称</label><br>
+                            <input id="displayName" style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:8px;" />
+                        </div>
+                        <div>
+                            <label style="font-weight:600; color:#374151;">手机号</label><br>
+                            <input id="profilePhone" style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:8px;" />
+                        </div>
+                        <button id="saveProfile" class="btn" style="background:#10b981;">保存个人信息</button>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top:12px;">
+                    <h3>登录历史</h3>
+                    <div id="historyList" style="margin-top:8px; color:#334155; font-size:0.9rem; line-height:1.5;"></div>
+                    <div style="margin-top:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <div style="font-weight:600;">日历风格登录图表</div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <button id="weekView" class="btn" style="background:#2563eb; margin-right:6px; font-size:12px; padding:4px 10px;">按周</button>
+                                <button id="monthView" class="btn" style="background:#10b981; font-size:12px; padding:4px 10px;">按月</button>
+                                <select id="monthSelector" style="display:none; padding:6px 8px; border-radius:6px; border:1px solid #d1d5db; font-size:13px;"></select>
+                                <button id="settingsBtn" title="设置：配置被禁止的 host 列表" style="padding:6px 8px; border-radius:6px; border:1px solid #d1d5db; background:#fff;">⚙</button>
+                            </div>
+                        </div>
+                        <div id="loginCalendar" style="display:grid; grid-template-columns:repeat(7,1fr); gap:6px;"> </div>
+                        <div id="heatmapStats" style="margin-top:8px; color:#374151; font-size:0.95rem;"></div>
+
+                        <!-- 日详情模态框 -->
+                        <div id="dayDetailsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:9999;">
+                            <div style="background:#fff; border-radius:10px; padding:18px; width:min(92%,720px); max-height:84vh; overflow:auto; box-shadow:0 12px 40px rgba(2,6,23,0.4); transform:translateY(8px); transition:all 180ms ease;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <strong id="modalDayTitle">日期详情</strong>
+                                    <div style="display:flex; gap:8px; align-items:center;">
+                                        <button id="copyDayBtn" style="background:#2563eb;color:#fff;border:none;padding:6px 10px;border-radius:6px;">复制</button>
+                                        <button id="exportDayBtn" style="background:#10b981;color:#fff;border:none;padding:6px 10px;border-radius:6px;">导出 CSV</button>
+                                        <button id="closeDayModal" style="background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:6px;">关闭</button>
+                                    </div>
+                                </div>
+                                <div id="modalDayList" style="font-size:14px;color:#0f172a; line-height:1.6; max-height:60vh; overflow:auto; padding-right:6px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- 设置模态框 -->
+                        <div id="settingsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:9999;">
+                            <div style="background:#fff; border-radius:10px; padding:18px; width:min(92%,720px); box-shadow:0 12px 40px rgba(2,6,23,0.4);">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <strong>访问黑名单（每行一个 host，例如 localhost:8000）</strong>
+                                    <div style="display:flex; gap:8px; align-items:center;">
+                                        <button id="restoreDefaultHosts" style="background:#f97316;color:#fff;border:none;padding:6px 10px;border-radius:6px;">恢复默认</button>
+                                        <button id="closeSettings" style="background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:6px;">关闭</button>
+                                    </div>
+                                </div>
+                                <textarea id="blockedHostsArea" style="width:100%;height:160px;border:1px solid #e5e7eb;border-radius:6px;padding:8px;font-family:monospace; resize:vertical;"></textarea>
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
+                                    <div style="color:#6b7280;font-size:13px;">保存后刷新页面以使黑名单生效。</div>
+                                    <div>
+                                        <button id="saveBlockedHosts" class="btn" style="background:#10b981;">保存</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="exportCsv" class="btn" style="background:#2563eb; margin-top:10px;">导出登录日志 CSV</button>
+                </div>
+
+                <div class="card" style="margin-top:12px;">
+                    <h3>安全等级</h3>
+                    <p id="securityScore">--</p>
+                </div>
+
+                <div class="card" style="margin-top:12px;">
+                    <h3>修改密码</h3>
+                    <div style="display:grid; gap:10px; margin-top:8px;">
+                        <input type="password" id="oldPassword" placeholder="当前密码" style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:8px;" />
+                        <input type="password" id="newPassword" placeholder="新密码（6-16位）" style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:8px;" />
+                        <input type="password" id="confirmNewPassword" placeholder="确认新密码" style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:8px;" />
+                        <button id="changePwd" class="btn" style="background:#f59e0b;">保存新密码</button>
+                    </div>
+                    <div id="changePwdMsg" style="margin-top:8px; color:#dc2626; font-size:0.9rem;"></div>
+                </div>
+
+                <div class="card" style="margin-top:12px;">
+                    <h3>操作</h3>
+                    <p>您可以在这里管理个人信息、修改密码、查看登录记录。</p>
+                    <a href="index (3).html" class="btn" id="goToLogin">返回登录</a>
+                    <a href="#" class="logout" id="logoutBtn">退出登录</a>
+                    <a href="#" class="logout" id="logoutAllBtn" style="margin-left: 10px;">退出所有设备</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // 可配置的访问黑名单（从 localStorage 读取，默认包含 localhost:8000）
+        const defaultBlocked = ['localhost:8000'];
+        const blockedHosts = JSON.parse(localStorage.getItem('blockedHosts') || 'null') || defaultBlocked;
+        function isBlockedHost() { return blockedHosts.includes(location.host); }
+
+        if (isBlockedHost()) {
+            document.body.innerHTML = `
+                <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#111827;color:#fff;">
+                    <div style="text-align:center;padding:24px;border-radius:12px;background:rgba(255,255,255,0.06);">
+                        <h2 style="margin:0 0 8px;">拒绝访问</h2>
+                        <p style="margin:0;color:#fca5a5;">此地址被禁止访问。</p>
+                    </div>
+                </div>
+            `;
+            throw new Error('Access denied by blockedHosts');
+        }
+
+        const user = localStorage.getItem('currentUser');
+        const title = document.getElementById('title');
+        const status = document.getElementById('status');
+        const userName = document.getElementById('userName');
+        const logout = document.getElementById('logoutBtn');
+        const logoutAll = document.getElementById('logoutAllBtn');
+        const goToLogin = document.getElementById('goToLogin');
+        const displayNameInput = document.getElementById('displayName');
+        const profilePhoneInput = document.getElementById('profilePhone');
+        const saveProfile = document.getElementById('saveProfile');
+        const historyList = document.getElementById('historyList');
+        const weekView = document.getElementById('weekView');
+        const monthView = document.getElementById('monthView');
+        const monthSelector = document.getElementById('monthSelector');
+        const heatmapStats = document.getElementById('heatmapStats');
+        const loginCalendar = document.getElementById('loginCalendar');
+        const exportCsv = document.getElementById('exportCsv');
+        const securityScore = document.getElementById('securityScore');
+        const oldPassword = document.getElementById('oldPassword');
+        const newPassword = document.getElementById('newPassword');
+        const confirmNewPassword = document.getElementById('confirmNewPassword');
+        const changePwd = document.getElementById('changePwd');
+        const changePwdMsg = document.getElementById('changePwdMsg');
+
+        function loadRegisteredUsers() {
+            try { return JSON.parse(localStorage.getItem('registeredUsers') || '{}'); }
+            catch (e) { return {}; }
+        }
+
+        function saveRegisteredUsers(users) {
+            localStorage.setItem('registeredUsers', JSON.stringify(users));
+        }
+
+        function getSecurityLevel(info) {
+            let score = 0;
+            if (info.password && info.password.length >= 6) score += 1;
+            if (info.password && info.password.length >= 10) score += 1;
+            if (info.phone && /^1[3-9]\d{9}$/.test(info.phone)) score += 1;
+            if (info.displayName && info.displayName.length >= 3) score += 1;
+            if (score <= 1) return '低（建议立即增强）';
+            if (score <= 3) return '中（可继续加强）';
+            return '高（安全）';
+        }
+
+        if (!user) {
+            title.textContent = '未登录';
+            userName.textContent = '请先登录';
+            status.textContent = '未认证';
+            goToLogin.href = 'index (3).html';
+            displayNameInput.value = '';
+            profilePhoneInput.value = '';
+            saveProfile.disabled = true;
+            historyList.textContent = '请先登录以查看历史。';
+            securityScore.textContent = '请先登录获取安全等级。';
+            changePwd.disabled = true;
+        } else {
+            const users = loadRegisteredUsers();
+            const current = users[user];
+            if (!current) {
+                title.textContent = '未找到用户';
+                userName.textContent = '请重新登录';
+                status.textContent = '账户异常';
+                historyList.textContent = '当前账号不存在';
+                securityScore.textContent = '未知';
+                changePwd.disabled = true;
+            } else {
+                title.textContent = `欢迎，${current.displayName || user}`;
+                userName.textContent = `用户名：${user}`;
+                status.textContent = '已登录';
+                displayNameInput.value = current.displayName || user;
+                profilePhoneInput.value = current.phone || '';
+                const loginHistory = current.loginHistory || [];
+                if (loginHistory.length === 0) {
+                    historyList.textContent = '还未有登录记录。';
+                } else {
+                    historyList.innerHTML = loginHistory.map(i => `<div>• ${i}</div>`).join('');
+                }
+                renderLoginCalendar(loginHistory, chartMode, selectedMonth);
+                securityScore.textContent = getSecurityLevel(current);
+            }
+        }
+
+        let chartMode = 'week';
+        let selectedMonth = null; // format: YYYY-MM
+
+        function buildMonthOptions() {
+            const today = new Date();
+            const opts = [];
+            for (let i = 0; i < 6; i++) {
+                const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const label = d.toLocaleString('zh-CN', { year: 'numeric', month: 'long' });
+                opts.push({ value, label });
+            }
+            monthSelector.innerHTML = opts.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+            monthSelector.value = opts[0].value;
+            selectedMonth = monthSelector.value;
+            monthSelector.addEventListener('change', () => {
+                selectedMonth = monthSelector.value;
+                refreshCalendar();
+            });
+        }
+
+        // 打开设置模态框并填充当前黑名单
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const blockedHostsArea = document.getElementById('blockedHostsArea');
+        const closeSettings = document.getElementById('closeSettings');
+        const saveBlockedHosts = document.getElementById('saveBlockedHosts');
+        const restoreDefaultHosts = document.getElementById('restoreDefaultHosts');
+
+        function openSettings() {
+            blockedHostsArea.value = (localStorage.getItem('blockedHosts')) ? JSON.parse(localStorage.getItem('blockedHosts')).join('\n') : defaultBlocked.join('\n');
+            settingsModal.style.display = 'flex';
+            // focus
+            setTimeout(()=>blockedHostsArea.focus(),120);
+        }
+        function closeSettingsModal() { settingsModal.style.display = 'none'; }
+        settingsBtn.addEventListener('click', openSettings);
+        closeSettings.addEventListener('click', closeSettingsModal);
+        saveBlockedHosts.addEventListener('click', () => {
+            const lines = blockedHostsArea.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+            localStorage.setItem('blockedHosts', JSON.stringify(lines));
+            alert('已保存黑名单，刷新页面以应用。');
+            closeSettingsModal();
+        });
+        restoreDefaultHosts.addEventListener('click', () => {
+            if (!confirm('确定要恢复默认黑名单？这会覆盖当前设置。')) return;
+            localStorage.removeItem('blockedHosts');
+            blockedHosts.length = 0; blockedHosts.push(...defaultBlocked);
+            blockedHostsArea.value = defaultBlocked.join('\n');
+            alert('已恢复为默认黑名单，请保存并刷新页面生效。');
+        });
+
+        weekView.addEventListener('click', () => {
+            chartMode = 'week';
+            weekView.style.opacity = '1';
+            monthView.style.opacity = '0.65';
+            monthSelector.style.display = 'none';
+            heatmapStats.textContent = '';
+            refreshCalendar();
+        });
+
+        monthView.addEventListener('click', () => {
+            chartMode = 'month';
+            monthView.style.opacity = '1';
+            weekView.style.opacity = '0.65';
+            monthSelector.style.display = 'inline-block';
+            if (!monthSelector.options || monthSelector.options.length === 0) buildMonthOptions();
+            selectedMonth = monthSelector.value;
+            refreshCalendar();
+        });
+
+        function toDateKey(date) {
+            return new Date(date).toISOString().slice(0, 10);
+        }
+
+        function refreshCalendar() {
+            const users = loadRegisteredUsers();
+            const current = users[user] || {};
+            const history = current.loginHistory || [];
+            renderLoginCalendar(history, chartMode, selectedMonth);
+        }
+
+        // 解析日期字符串为 Date，兼容多种格式
+        function parseDateFromString(s) {
+            if (!s) return null;
+            // 若是 Date 可直接解析
+            const tryDate = new Date(s);
+            if (!isNaN(tryDate)) return tryDate;
+            // 尝试提取 YYYY-MM-DD
+            const m = s.match(/(\d{4})[-/\\.](\d{1,2})[-/\\.](\d{1,2})/);
+            if (m) return new Date(`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`);
+            // 尝试提取 日/月/年 或 年/月/日 等常见本地化格式
+            const m2 = s.match(/(\d{1,4})\D(\d{1,2})\D(\d{1,4})/);
+            if (m2) {
+                // 根据大小猜测顺序，若第一个是 4 位，则假定为年
+                if (m2[1].length === 4) return new Date(`${m2[1]}-${String(m2[2]).padStart(2,'0')}-${String(m2[3]).padStart(2,'0')}`);
+                if (m2[3].length === 4) return new Date(`${m2[3]}-${String(m2[2]).padStart(2,'0')}-${String(m2[1]).padStart(2,'0')}`);
+            }
+            return null;
+        }
+
+        function renderLoginCalendar(loginHistory, mode = 'week', targetMonth = null) {
+            // 先聚合日期统计，尽量兼容不同日期字符串格式
+            const counts = {};
+            const dayToLines = {}; // 保存每个日期对应的原始记录
+            loginHistory.forEach(line => {
+                const raw = (line || '').split(' - ')[0] || '';
+                let day = '';
+                const dObj = parseDateFromString(raw);
+                if (dObj && !isNaN(dObj)) day = dObj.toISOString().slice(0,10);
+                if (!day && raw.length >= 10) day = raw.slice(0,10);
+                if (!day) return;
+                counts[day] = (counts[day] || 0) + 1;
+                dayToLines[day] = dayToLines[day] || [];
+                dayToLines[day].push(line);
+            });
+
+            // 提供详情打开函数
+            window.openDayDetails = function(day) {
+                const modal = document.getElementById('dayDetailsModal');
+                const title = document.getElementById('modalDayTitle');
+                const list = document.getElementById('modalDayList');
+                title.textContent = `日期：${day}`;
+                const items = dayToLines[day] || [];
+                if (items.length === 0) list.innerHTML = '<div style="color:#6b7280;">当天无记录</div>';
+                else list.innerHTML = items.map(i => `<div>• ${i}</div>`).join('');
+                modal.style.display = 'flex';
+                // 绑定复制和导出按钮行为（每次打开时更新当前日）
+                const copyBtn = document.getElementById('copyDayBtn');
+                const exportBtn = document.getElementById('exportDayBtn');
+                copyBtn.onclick = () => {
+                    const text = (dayToLines[day] || []).join('\n');
+                    if (!text) return alert('无可复制内容');
+                    navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text).then(()=>alert('已复制到剪贴板')) : (function(){
+                        const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('已复制到剪贴板');
+                    })();
+                };
+                exportBtn.onclick = () => {
+                    const rows = ['datetime,event'];
+                    (dayToLines[day] || []).forEach(line => {
+                        const parts = line.split(' - ');
+                        const date = (parts[0] || '').replace(/\"/g,'"');
+                        const evt = (parts[1] || '').replace(/\"/g,'"');
+                        rows.push(`${date},"${evt}"`);
+                    });
+                    const csv = rows.join('\n');
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = `login_${day}.csv`; a.click(); URL.revokeObjectURL(url);
+                };
+            };
+
+            document.getElementById('closeDayModal').addEventListener('click', () => {
+                document.getElementById('dayDetailsModal').style.display = 'none';
+            });
+
+            if (mode === 'week') {
+                const today = new Date();
+                const days = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(today);
+                    d.setDate(today.getDate() - i);
+                    days.push(d.toISOString().slice(0, 10));
+                }
+                const maxCount = Math.max(1, ...Object.values(counts));
+                loginCalendar.style.gridTemplateColumns = 'repeat(7,1fr)';
+                loginCalendar.innerHTML = days.map(day => {
+                    const c = counts[day] || 0;
+                    const h = 20 + (c / maxCount) * 70;
+                    return `<div style="display:flex; flex-direction:column; align-items:center; font-size:10px;"><div data-day="${day}" onclick="openDayDetails('${day}')" title="${day}: ${c}次" style="height:${h}px; width:22px; background:linear-gradient(180deg, #93c5fd, #2563eb); border-radius:4px; cursor:pointer;"></div><div style="margin-top:4px; color:#475569;">${day.slice(5)}</div></div>`;
+                }).join('');
+                heatmapStats.innerHTML = '';
+            } else {
+                const today = new Date();
+                let year, monthIndex;
+                if (targetMonth) {
+                    const parts = targetMonth.split('-').map(Number);
+                    year = parts[0];
+                    monthIndex = parts[1] - 1;
+                } else {
+                    year = today.getFullYear();
+                    monthIndex = today.getMonth();
+                }
+
+                const firstDay = new Date(year, monthIndex, 1);
+                const lastDay = new Date(year, monthIndex + 1, 0);
+                const dayCount = lastDay.getDate();
+                const startDay = firstDay.getDay();
+
+                const cells = [];
+                const dayCounts = [];
+                for (let i = 0; i < startDay; i++) cells.push('');
+                for (let d = 1; d <= dayCount; d++) {
+                    const key = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2,'0')}`;
+                    const c = counts[key] || 0;
+                    cells.push(key);
+                    dayCounts.push({ day: key, count: c });
+                }
+
+                const maxCount = dayCounts.length ? Math.max(...dayCounts.map(x => x.count)) : 0;
+                const minCount = dayCounts.length ? Math.min(...dayCounts.map(x => x.count)) : 0;
+                const maxItem = dayCounts.find(x => x.count === maxCount) || { day: '', count: 0 };
+                const minItem = dayCounts.find(x => x.count === minCount) || { day: '', count: 0 };
+
+                heatmapStats.innerHTML = `<span style="cursor:pointer;color:#1e40af;margin-right:12px;" id="heatMax">最多：${maxItem.day}（${maxItem.count}次）</span><span style="cursor:pointer;color:#065f46;" id="heatMin">最少：${minItem.day}（${minItem.count}次）</span>`;
+                // 点击跳转到详情
+                setTimeout(()=>{
+                    const maxEl = document.getElementById('heatMax');
+                    const minEl = document.getElementById('heatMin');
+                    if (maxEl) maxEl.addEventListener('click', () => openDayDetails(maxItem.day));
+                    if (minEl) minEl.addEventListener('click', () => openDayDetails(minItem.day));
+                }, 0);
+
+                loginCalendar.style.gridTemplateColumns = 'repeat(7,1fr)';
+                const weekHeaders = ['日','一','二','三','四','五','六'];
+                const headerHtml = weekHeaders.map(w=>`<div style="font-size:10px;color:#475569;text-align:center;">${w}</div>`).join('');
+                loginCalendar.innerHTML = `<div style="display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px;">${headerHtml}</div>`;
+                const dayCells = cells.map((day)=>{
+                    if (!day) return `<div style="height:26px;background:#f1f5f9;border-radius:4px;"></div>`;
+                    const c = counts[day] || 0;
+                    const alpha = c === 0 ? 0.07 : Math.min(0.9, 0.2 + (maxCount ? c / maxCount * 0.8 : 0));
+                    const color = `rgba(37,99,235,${alpha})`;
+                    const dayNum = Number(day.slice(-2));
+                    return `<div data-day="${day}" onclick="openDayDetails('${day}')" title="${day}: ${c}次" style="height:36px; border-radius:4px; background:${color}; display:flex; align-items:center; justify-content:center; color:#0f172a; font-size:12px; cursor:pointer;">${dayNum}</div>`;
+                }).join('');
+                loginCalendar.innerHTML += `<div style="display:grid; grid-template-columns:repeat(7,1fr); gap:6px;">${dayCells}</div>`;
+            }
+        }
+
+        exportCsv.addEventListener('click', () => {
+            const users = loadRegisteredUsers();
+            const current = users[user];
+            if (!current || !current.loginHistory || current.loginHistory.length === 0) {
+                alert('暂无登录记录可导出');
+                return;
+            }
+            const rows = ['date,event'];
+            current.loginHistory.forEach(line => {
+                const [date, event] = line.split(' - ');
+                rows.push(`${date.replace(/,/g, ' ')}","${event}`);
+            });
+            const csv = rows.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `login_history_${user || 'user'}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // 小帮助：如果需要重置页面上的一些 UI（例如在开发时），可调用 resetUI()
+        function resetUI() {
+            monthSelector.style.display = 'none';
+            monthSelector.innerHTML = '';
+            heatmapStats.textContent = '';
+            document.getElementById('dayDetailsModal').style.display = 'none';
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        saveProfile.addEventListener('click', () => {
+            const newName = displayNameInput.value.trim();
+            const newPhone = profilePhoneInput.value.trim();
+            if (!newName || !/^1[3-9]\d{9}$/.test(newPhone)) {
+                alert('请输入合法昵称和手机号');
+                return;
+            }
+            const users = loadRegisteredUsers();
+            if (!users[user]) return alert('当前用户不存在');
+            users[user] = { ...users[user], displayName: newName, phone: newPhone };
+            saveRegisteredUsers(users);
+            alert('个人信息已更新');
+            title.textContent = `欢迎，${newName}`;
+            securityScore.textContent = getSecurityLevel(users[user]);
+        });
+
+        changePwd.addEventListener('click', () => {
+            const oldPwd = oldPassword.value.trim();
+            const newPwd = newPassword.value.trim();
+            const confirmPwd = confirmNewPassword.value.trim();
+            changePwdMsg.textContent = '';
+            if (!oldPwd || !newPwd || !confirmPwd) {
+                changePwdMsg.textContent = '请补全密码信息';
+                return;
+            }
+            if (newPwd.length < 6 || newPwd.length > 16) {
+                changePwdMsg.textContent = '新密码长度需6-16位';
+                return;
+            }
+            if (newPwd !== confirmPwd) {
+                changePwdMsg.textContent = '两次输入的新密码不一致';
+                return;
+            }
+            const users = loadRegisteredUsers();
+            const current = users[user];
+            if (!current) {
+                changePwdMsg.textContent = '当前用户不存在';
+                return;
+            }
+            if (current.password !== oldPwd) {
+                changePwdMsg.textContent = '当前密码错误';
+                return;
+            }
+            users[user] = { ...current, password: newPwd };
+            saveRegisteredUsers(users);
+            changePwdMsg.style.color = '#16a34a';
+            changePwdMsg.textContent = '密码已更新';
+            oldPassword.value = '';
+            newPassword.value = '';
+            confirmNewPassword.value = '';
+            securityScore.textContent = getSecurityLevel(users[user]);
+        });
+
+        logout.addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('currentUser');
+            alert('已退出登录');
+            window.location.href = 'index (3).html';
+        });
+
+        logoutAll.addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('currentUser');
+            alert('已退出所有设备');
+            window.location.href = 'index (3).html';
+        });
+    </script>
+</body>
+</html>
